@@ -13,22 +13,22 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/posts",
-      "dest": "/api/posts.js"
+      "source": "/api/posts",
+      "destination": "/api/posts.js"
     },
     {
-      "src": "/api/upload",
-      "dest": "/api/upload.js"
+      "source": "/api/posts/:id",
+      "destination": "/api/posts.js"
     },
     {
-      "src": "/files/(.*)",
-      "dest": "/public/files/$1"
+      "source": "/api/upload",
+      "destination": "/api/upload.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "/$1"
+      "source": "/files/(.*)",
+      "destination": "/public/files/$1"
     }
   ],
   "headers": [
