@@ -2,14 +2,17 @@
   "name": "naa-db",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'No build required'"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "form-data": "^4.0.0",
     "formidable": "^3.5.1",
-    "node-fetch": "^3.3.2"
+    "next": "^14.2.13",
+    "node-fetch": "^2.7.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   }
 }
