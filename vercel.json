@@ -13,10 +13,28 @@
       }
     }
   ],
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x",
+      "memory": 1536,
+      "maxDuration": 30,
+      "includeFiles": [
+        "mock.data.production.json"
+      ]
+    }
+  },
   "rewrites": [
     {
       "source": "/api/posts",
       "destination": "/api/posts.js"
+    },
+    {
+      "source": "/api/create-post",
+      "destination": "/api/create-post.js"
+    },
+    {
+      "source": "/api/ut-upload",
+      "destination": "/api/ut-upload.js"
     },
     {
       "source": "/api/posts/:id",
