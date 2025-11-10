@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 
-const filePath = path.join(process.cwd(), 'mock_data_production.json');
+const seedFile = path.join(process.cwd(), 'mock_data_production.json');
+const tmpFile = path.join('/tmp', 'mock_data_production.json');
 
 export default function handler(req, res) {
   if (req.method !== 'GET') {
@@ -9,10 +10,15 @@ export default function handler(req, res) {
   }
 
   try {
-    const data = fs.readFileSync(filePath, 'utf-8');
+    let fileToRead = fs.existsSync(tmpFile) ? tmpFile : seedFile;
+    if (!fs.existsSync(fileToRead)) {
+      return res.status(200).json([]);
+    }
+    const data = fs.readFileSync(fileToRead, 'utf-8');
     res.status(200).json(JSON.parse(data));
-  } catch {
-    res.status(200).json([]);
+  } catch (error) {
+    console.error('posts error', error);
+    res.status(500).json({ error: 'Failed to read posts' });
   }
 }
 
