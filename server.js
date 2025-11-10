@@ -17,8 +17,17 @@ const FILES_DIR = join(__dirname, 'public', 'files');
 // Ensure directories exist
 mkdirSync(FILES_DIR, { recursive: true });
 
+// CORS configuration - Allow all origins
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  credentials: true,
+  maxAge: 86400,
+};
+
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.static(join(__dirname, 'public')));
 

@@ -24,7 +24,7 @@ function App() {
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <code style={{ background: '#f1f5f9', padding: '6px 10px', borderRadius: '8px', fontSize: '13px' }}>PUT /api/posts/:id</code>
-              <span style={{ fontSize: '14px', color: '#475569' }}>Update post</span>
+              <span style={{ fontSize: '14px', color: '#475569' }}>Update post</span> 
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <code style={{ background: '#f1f5f9', padding: '6px 10px', borderRadius: '8px', fontSize: '13px' }}>DELETE /api/posts/:id</code>
