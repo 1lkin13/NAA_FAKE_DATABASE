@@ -1,0 +1,366 @@
+{
+  "posts": [
+    {
+      "id": "prod-1",
+      "image": "/files/post-1.jpg",
+      "title": "Milli Aviasiya Akademiyasının 25 illik yubileyi qeyd edildi",
+      "description": "Milli Aviasiya Akademiyasının 25 illik yubileyi çərçivəsində təntənəli mərasim keçirildi. Mərasimdə akademiyanın nailiyyətləri, təhsil proqramları və gələcək planları müzakirə edildi.",
+      "type": "News",
+      "sharingTime": "15/01/2025",
+      "sharingHour": "10:00 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-15T10:00:00Z",
+      "galleryImages": [
+        "/files/post-1-gallery-1.jpg",
+        "/files/post-1-gallery-2.jpg"
+      ]
+    },
+    {
+      "id": "prod-2",
+      "image": "/files/post-2.jpg",
+      "title": "Yeni təhsil proqramları: Aviasiya Mühəndisliyi və Hava Nəqliyyatı İdarəetməsi",
+      "description": "Akademiyada iki yeni bakalavr proqramı təqdim edildi. Proqramlar beynəlxalq standartlara uyğun olaraq hazırlanıb və tələbələrə geniş kariyera imkanları təqdim edir.",
+      "type": "Announcement",
+      "sharingTime": "14/01/2025",
+      "sharingHour": "14:30 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-14T14:30:00Z"
+    },
+    {
+      "id": "prod-3",
+      "image": "/files/post-3.jpg",
+      "title": "Beynəlxalq konfrans: 'Aviasiya Təhlükəsizliyi və İnnovasiyalar'",
+      "description": "Akademiyada beynəlxalq konfrans keçirildi. Konfransda dünyanın aparıcı aviasiya mütəxəssisləri iştirak edib və müasir aviasiya texnologiyaları müzakirə edilib.",
+      "type": "News",
+      "sharingTime": "13/01/2025",
+      "sharingHour": "09:15 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-13T09:15:00Z",
+      "galleryImages": [
+        "/files/post-3-gallery-1.jpg",
+        "/files/post-3-gallery-2.jpg",
+        "/files/post-3-gallery-3.jpg"
+      ]
+    },
+    {
+      "id": "prod-4",
+      "image": "/files/post-4.jpg",
+      "title": "Tələbələr üçün staj imkanları: AZAL, Silk Way və digər aviasiya şirkətləri",
+      "description": "Akademiyanın tələbələri üçün yeni staj imkanları yaradılıb. Tələbələr ölkənin aparıcı aviasiya şirkətlərində praktiki təcrübə qazana biləcəklər.",
+      "type": "Announcement",
+      "sharingTime": "12/01/2025",
+      "sharingHour": "16:45 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-12T16:45:00Z"
+    },
+    {
+      "id": "prod-5",
+      "image": "/files/post-5.jpg",
+      "title": "Tədris prosesinin modernləşdirilməsi: Yeni simulyatorlar və laboratoriyalar",
+      "description": "Akademiyada tədris prosesinin yaxşılaşdırılması üçün yeni avadanlıqlar alınıb. Tələbələr artıq ən müasir simulyatorlarda təcrübə qazana biləcəklər.",
+      "type": "News",
+      "sharingTime": "11/01/2025",
+      "sharingHour": "11:20 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-11T11:20:00Z"
+    },
+    {
+      "id": "prod-6",
+      "image": "/files/post-2.jpg",
+      "title": "Kitabxanaya yeni elektron resurslar əlavə edildi",
+      "description": "Akademiyanın kitabxanasına minlərlə yeni elektron kitab, jurnal və tədqiqat materialları əlavə edilib. Tələbələr və müəllimlər bu resurslardan istifadə edə bilərlər.",
+      "type": "Announcement",
+      "sharingTime": "10/01/2025",
+      "sharingHour": "13:10 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-10T13:10:00Z"
+    },
+    {
+      "id": "prod-7",
+      "image": "/files/post-1.jpg",
+      "title": "Tələbə şurasının yığıncağı: Yeni təşəbbüslər və layihələr",
+      "description": "Tələbə şurasının növbəti yığıncağında akademiyanın inkişafı üçün yeni təşəbbüslər müzakirə edildi. Tələbələrin təklifləri qəbul edildi.",
+      "type": "News",
+      "sharingTime": "09/01/2025",
+      "sharingHour": "10:00 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-09T10:00:00Z"
+    },
+    {
+      "id": "prod-8",
+      "image": "/files/post-4.jpg",
+      "title": "Bakalavr proqramlarının yenilənməsi: Müasir tələblərə uyğunlaşdırma",
+      "description": "Bakalavr proqramları beynəlxalq standartlara uyğun olaraq yeniləndi. Yeni proqramlar tələbələrə daha geniş bilik və bacarıq qazandıracaq.",
+      "type": "Announcement",
+      "sharingTime": "08/01/2025",
+      "sharingHour": "15:30 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-08T15:30:00Z"
+    },
+    {
+      "id": "prod-9",
+      "image": "/files/post-3.jpg",
+      "title": "Magistr proqramları üzrə qəbul: 2025-2026 tədris ili",
+      "description": "2025-2026 tədris ili üçün magistr proqramları üzrə qəbul prosesi başladı. Namizədlər onlayn müraciət edə bilərlər.",
+      "type": "News",
+      "sharingTime": "07/01/2025",
+      "sharingHour": "09:45 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-07T09:45:00Z"
+    },
+    {
+      "id": "prod-10",
+      "image": "/files/post-5.jpg",
+      "title": "Tədris laboratoriyalarının modernləşdirilməsi tamamlandı",
+      "description": "Akademiyanın tədris laboratoriyaları ən müasir avadanlıqlarla təchiz edildi. Tələbələr artıq praktiki təcrübə üçün daha yaxşı şəraitə malikdirlər.",
+      "type": "Announcement",
+      "sharingTime": "06/01/2025",
+      "sharingHour": "12:00 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-06T12:00:00Z",
+      "galleryImages": [
+        "/files/post-10-gallery-1.jpg",
+        "/files/post-10-gallery-2.jpg"
+      ]
+    },
+    {
+      "id": "prod-11",
+      "image": "/files/post-1.jpg",
+      "title": "Beynəlxalq əməkdaşlıq: Yeni müqavilələr imzalandı",
+      "description": "Akademiya dünyanın aparıcı aviasiya universitetləri ilə yeni əməkdaşlıq müqavilələri imzaladı. Bu müqavilələr tələbə mübadiləsi və birgə tədqiqat layihələri üçün imkanlar yaradır.",
+      "type": "News",
+      "sharingTime": "05/01/2025",
+      "sharingHour": "14:15 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-05T14:15:00Z"
+    },
+    {
+      "id": "prod-12",
+      "image": "/files/post-2.jpg",
+      "title": "Tədris metodlarının yenilənməsi: İnteraktiv tədris texnologiyaları",
+      "description": "Akademiyada müəllimlər üçün yeni tədris metodları üzrə seminarlar keçirildi. İnteraktiv tədris texnologiyaları və müasir tədris üsulları müzakirə edildi.",
+      "type": "Announcement",
+      "sharingTime": "04/01/2025",
+      "sharingHour": "10:30 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-04T10:30:00Z"
+    },
+    {
+      "id": "prod-13",
+      "image": "/files/post-3.jpg",
+      "title": "Tədqiqat layihələri: Yeni elmi işlər və kəşflər",
+      "description": "Akademiyanın tədqiqatçıları yeni elmi layihələr üzərində işləyirlər. Bu layihələr aviasiya sənayesinin inkişafına töhfə verəcək.",
+      "type": "News",
+      "sharingTime": "03/01/2025",
+      "sharingHour": "11:45 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-03T11:45:00Z",
+      "galleryImages": [
+        "/files/post-13-gallery-1.jpg",
+        "/files/post-13-gallery-2.jpg",
+        "/files/post-13-gallery-3.jpg"
+      ]
+    },
+    {
+      "id": "prod-14",
+      "image": "/files/post-4.jpg",
+      "title": "Tələbələr üçün təqaüd proqramları: Yeni imkanlar",
+      "description": "Akademiyada tələbələr üçün yeni təqaüd proqramları elan edildi. Uğurlu tələbələr müxtəlif təqaüdlərə layiq görülə bilərlər.",
+      "type": "Announcement",
+      "sharingTime": "02/01/2025",
+      "sharingHour": "13:20 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-02T13:20:00Z"
+    },
+    {
+      "id": "prod-15",
+      "image": "/files/post-5.jpg",
+      "title": "Akademik təqvim: 2025-2026 tədris ili",
+      "description": "Yeni akademik təqvim yayımlandı. Tələbələr və müəllimlər tədris prosesinin bütün mərhələlərini ətraflı öyrənə bilərlər.",
+      "type": "News",
+      "sharingTime": "01/01/2025",
+      "sharingHour": "09:00 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2025-01-01T09:00:00Z"
+    },
+    {
+      "id": "prod-16",
+      "image": "/files/post-1.jpg",
+      "title": "İnnovasiya mərkəzinin açılışı: Yeni imkanlar",
+      "description": "Akademiyada yeni innovasiya mərkəzi açıldı. Mərkəz tələbələrə yaradıcı layihələr üzərində işləmək üçün müasir şərait təqdim edir.",
+      "type": "Announcement",
+      "sharingTime": "31/12/2024",
+      "sharingHour": "15:00 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-31T15:00:00Z",
+      "galleryImages": [
+        "/files/post-16-gallery-1.jpg",
+        "/files/post-16-gallery-2.jpg"
+      ]
+    },
+    {
+      "id": "prod-17",
+      "image": "/files/post-2.jpg",
+      "title": "Məzunların uğurları: Kariyera nailiyyətləri",
+      "description": "Akademiyanın məzunları ölkənin və dünyanın aparıcı aviasiya şirkətlərində uğurla işləyirlər. Onların nailiyyətləri akademiyanın keyfiyyətli təhsil verdiyini təsdiq edir.",
+      "type": "News",
+      "sharingTime": "30/12/2024",
+      "sharingHour": "10:15 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-30T10:15:00Z"
+    },
+    {
+      "id": "prod-18",
+      "image": "/files/post-3.jpg",
+      "title": "Tədris materiallarının yenilənməsi: Elektron resurslar",
+      "description": "Tədris materialları müasir tələblərə uyğun olaraq yeniləndi. Tələbələr artıq elektron formatda dərsliklərə və materiallara çıxış əldə edə bilərlər.",
+      "type": "Announcement",
+      "sharingTime": "29/12/2024",
+      "sharingHour": "14:45 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-29T14:45:00Z"
+    },
+    {
+      "id": "prod-19",
+      "image": "/files/post-4.jpg",
+      "title": "Beynəlxalq tələbə mübadiləsi: Erasmus+ proqramı",
+      "description": "Akademiya Erasmus+ proqramı çərçivəsində tələbə mübadiləsi həyata keçirir. Tələbələr Avropanın aparıcı universitetlərində təhsil ala bilərlər.",
+      "type": "News",
+      "sharingTime": "28/12/2024",
+      "sharingHour": "11:30 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-28T11:30:00Z",
+      "galleryImages": [
+        "/files/post-19-gallery-1.jpg",
+        "/files/post-19-gallery-2.jpg"
+      ]
+    },
+    {
+      "id": "prod-20",
+      "image": "/files/post-5.jpg",
+      "title": "Tədris planlarının yenilənməsi: Müasir tələblər",
+      "description": "Bütün tədris planları beynəlxalq standartlara uyğun olaraq yeniləndi. Yeni planlar tələbələrə daha geniş bilik və praktiki bacarıqlar qazandıracaq.",
+      "type": "Announcement",
+      "sharingTime": "27/12/2024",
+      "sharingHour": "16:00 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-27T16:00:00Z"
+    },
+    {
+      "id": "prod-21",
+      "image": "/files/post-1.jpg",
+      "title": "Tələbə yaradıcılıq festivalı: Uğurlu nəticələr",
+      "description": "Akademiyada tələbə yaradıcılıq festivalı keçirildi. Festivalda tələbələrin innovativ layihələri və yaradıcı işləri nümayiş etdirildi.",
+      "type": "News",
+      "sharingTime": "26/12/2024",
+      "sharingHour": "09:30 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-26T09:30:00Z",
+      "galleryImages": [
+        "/files/post-13-gallery-1.jpg",
+        "/files/post-13-gallery-2.jpg",
+        "/files/post-13-gallery-3.jpg"
+      ]
+    },
+    {
+      "id": "prod-22",
+      "image": "/files/post-2.jpg",
+      "title": "Aviasiya sənayesində kariyera imkanları",
+      "description": "Akademiyanın məzunları üçün aviasiya sənayesində geniş kariyera imkanları mövcuddur. Tələbələr təhsil aldıqları müddətdə praktiki təcrübə qazanırlar.",
+      "type": "News",
+      "sharingTime": "25/12/2024",
+      "sharingHour": "12:00 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-25T12:00:00Z"
+    },
+    {
+      "id": "prod-23",
+      "image": "/files/post-3.jpg",
+      "title": "Elmi konfrans: 'Aviasiya Texnologiyalarının Gələcəyi'",
+      "description": "Akademiyada elmi konfrans keçirildi. Konfransda aviasiya texnologiyalarının inkişaf perspektivləri və innovasiyalar müzakirə edildi.",
+      "type": "Announcement",
+      "sharingTime": "24/12/2024",
+      "sharingHour": "10:00 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-24T10:00:00Z",
+      "galleryImages": [
+        "/files/post-23-gallery-1.jpg",
+        "/files/post-23-gallery-2.jpg"
+      ]
+    },
+    {
+      "id": "prod-24",
+      "image": "/files/post-4.jpg",
+      "title": "Tələbə idman yarışları: Çempionat nəticələri",
+      "description": "Akademiyada tələbə idman yarışları keçirildi. Yarışlarda tələbələr müxtəlif idman növlərində yarışıblar və uğurlu nəticələr əldə ediblər.",
+      "type": "News",
+      "sharingTime": "23/12/2024",
+      "sharingHour": "15:30 PM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-23T15:30:00Z"
+    },
+    {
+      "id": "prod-25",
+      "image": "/files/post-5.jpg",
+      "title": "Müəllimlərin peşəkar inkişafı: Təlim və seminarlar",
+      "description": "Akademiyanın müəllimləri üçün peşəkar inkişaf proqramları həyata keçirilir. Müəllimlər müasir tədris metodları və texnologiyaları öyrənirlər.",
+      "type": "Announcement",
+      "sharingTime": "22/12/2024",
+      "sharingHour": "11:00 AM",
+      "status": "Active",
+      "publishStatus": "Publish",
+      "author": "admin",
+      "createdAt": "2024-12-22T11:00:00Z"
+    }
+  ],
+  "total": 25
+}
+
