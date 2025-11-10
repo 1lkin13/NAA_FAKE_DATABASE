@@ -1,1 +1,32 @@
-[]
+[
+  {
+    "id": "test-1",
+    "title": "Test Post 1",
+    "slug": "test-post-1",
+    "category": "News",
+    "type": "News",
+    "htmlContent": "<p>Bu bir test post'tur</p>",
+    "language": "AZ",
+    "coverImage": "https://utfs.io/f/test-image-1.jpg",
+    "galleryImages": ["https://utfs.io/f/test-gallery-1.jpg"],
+    "author": "admin",
+    "status": "Active",
+    "publishStatus": "Publish",
+    "createdAt": "2025-11-10T12:00:00.000Z"
+  },
+  {
+    "id": "test-2",
+    "title": "Test Post 2",
+    "slug": "test-post-2",
+    "category": "Announcement",
+    "type": "Announcement",
+    "htmlContent": "<p>Bu bir duyuru test post'tur</p>",
+    "language": "EN",
+    "coverImage": "https://utfs.io/f/test-image-2.jpg",
+    "galleryImages": [],
+    "author": "admin",
+    "status": "Active",
+    "publishStatus": "Publish",
+    "createdAt": "2025-11-10T11:00:00.000Z"
+  }
+]
