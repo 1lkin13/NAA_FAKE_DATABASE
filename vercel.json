@@ -18,9 +18,7 @@
       "runtime": "nodejs18.x",
       "memory": 1536,
       "maxDuration": 30,
-      "includeFiles": [
-        "mock.data.production.json"
-      ]
+      "includeFiles": "mock.data.production.json"
     }
   },
   "rewrites": [
