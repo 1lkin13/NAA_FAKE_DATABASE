@@ -1,8 +1,6 @@
 // Vercel Serverless Function - GET, POST, PUT, DELETE posts
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import Busboy from 'busboy';
-import { UTApi } from 'uploadthing/server';
 
 const DATA_FILE = join(process.cwd(), 'mock.data.production.json');
 const FILES_DIR = join(process.cwd(), 'public', 'files');
@@ -64,92 +62,27 @@ const ensureFilesDir = () => {
   mkdirSync(FILES_DIR, { recursive: true });
 };
 
-const uploadthingSecret = process.env.UPLOADTHING_SECRET;
-const utapi = uploadthingSecret ? new UTApi({ apiKey: uploadthingSecret }) : null;
-const isReadOnlyFs = !!process.env.VERCEL;
-
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
-
-const uploadBuffer = async (buffer, filename, mimeType) => {
-  if (utapi) {
-    const blob = new Blob([buffer], { type: mimeType || 'application/octet-stream' });
-    const result = await utapi.uploadFiles([{ name: filename, blob }]);
-    const first = Array.isArray(result) ? result[0] : undefined;
-    const fileUrl =
-      first?.data?.url ??
-      first?.data?.fileUrl ??
-      first?.url ??
-      first?.fileUrl;
-    if (!fileUrl) {
-      const message =
-        (Array.isArray(first?.error) ? first?.error[0]?.message : first?.error?.message) ||
-        (typeof first?.error === 'string' ? first.error : null) ||
-        'Failed to upload image';
-      throw new Error(message);
-    }
-    return fileUrl;
-  }
-
-  if (isReadOnlyFs) {
-    throw new Error('UploadThing API key is not configured');
-  }
-
+// For JSON-only mode, if a base64 is sent, convert and persist locally (dev only)
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
+const saveBase64Image = (imageData) => {
+  if (typeof imageData !== 'string') return imageData;
+  if (!imageData.startsWith('data:image/')) return imageData;
+  const [metadata, dataPart] = imageData.split(';base64,');
+  if (!dataPart) return imageData;
+  const mimeType = metadata.replace(/^data:/, '') || 'image/png';
+  const extension = mimeType.split('/')[1]?.split('+')[0] || 'png';
+  const buffer = Buffer.from(dataPart.replace(/\s/g, ''), 'base64');
+  if (!buffer.length || buffer.length > MAX_IMAGE_SIZE) return imageData;
   ensureFilesDir();
+  const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
   const filepath = join(FILES_DIR, filename);
   writeFileSync(filepath, buffer);
   return `/files/${filename}`;
 };
-
-const saveBase64Image = async (imageData) => {
-  if (!imageData || typeof imageData !== 'string') {
-    return imageData;
-  }
-
-  if (!imageData.startsWith('data:image/')) {
-    return imageData;
-  }
-
-  const [metadata, dataPart] = imageData.split(';base64,');
-  if (!dataPart) {
-    throw new Error('Invalid image data format');
-  }
-
-  const mimeType = metadata.replace(/^data:/, '') || 'image/png';
-  const extension = mimeType.split('/')[1]?.split('+')[0] || 'png';
-  const sanitized = dataPart.replace(/\s/g, '');
-
-  let buffer;
-  try {
-    buffer = Buffer.from(sanitized, 'base64');
-  } catch (error) {
-    throw new Error('Image data is not valid base64');
-  }
-
-  if (!buffer || buffer.length === 0) {
-    throw new Error('Image data is empty');
-  }
-
-  if (buffer.length > MAX_IMAGE_SIZE) {
-    throw new Error('Image size exceeds 5MB limit');
-  }
-
-  const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
-  return uploadBuffer(buffer, filename, mimeType);
-};
-
-const processGalleryInput = async (gallery) => {
+const processGalleryInput = (gallery) => {
   const normalized = normalizeGallery(gallery);
-  if (normalized.length === 0) {
-    return [];
-  }
-  const results = [];
-  for (const item of normalized) {
-    const processed = await saveBase64Image(item);
-    if (processed) {
-      results.push(processed);
-    }
-  }
-  return results;
+  if (!normalized.length) return [];
+  return normalized.map((g) => saveBase64Image(g));
 };
 
 const normalizeFieldName = (name = '') => name.replace(/\[\d+\]$/, '');
@@ -281,24 +214,7 @@ export default async function handler(req, res) {
 
   const data = loadData();
   const { method, query, body: rawBody } = req;
-  const contentType = req.headers['content-type'] || '';
-
-  let formFields = {};
-  let fileFields = {};
-  let jsonPayload = {};
-
-  if (contentType.includes('multipart/form-data')) {
-    try {
-      const parsed = await parseMultipartForm(req);
-      formFields = parsed.fields || {};
-      fileFields = parsed.files || {};
-    } catch (error) {
-      console.error('Multipart parsing error:', error);
-      return res.status(400).json({ error: 'Invalid multipart form data' });
-    }
-  } else {
-    jsonPayload = parseRequestBody(rawBody);
-  }
+  const jsonPayload = parseRequestBody(rawBody);
 
   // Extract post ID from URL path or query
   let postId = null;
@@ -371,108 +287,49 @@ export default async function handler(req, res) {
 
   // POST /api/posts
   if (method === 'POST') {
-    const title = (getFieldValue(formFields, jsonPayload, 'title') || '').toString().trim();
-    const slugRaw = getFieldValue(formFields, jsonPayload, 'slug');
-    const categoryRaw = getFieldValue(formFields, jsonPayload, 'category');
-    const htmlContentRaw = getFieldValue(formFields, jsonPayload, 'htmlContent');
-    const languageRaw = getFieldValue(formFields, jsonPayload, 'language');
-    const statusRaw = getFieldValue(formFields, jsonPayload, 'status');
-    const publishStatusRaw = getFieldValue(formFields, jsonPayload, 'publishStatus');
-    const authorRaw = getFieldValue(formFields, jsonPayload, 'author');
-    const existingCoverImage = getFieldValue(formFields, jsonPayload, 'existingCoverImage');
-    const coverImageBase64 = getFieldValue(formFields, jsonPayload, 'coverImage');
-    const galleryFiles = fileFields.galleryImages || [];
-    const base64GalleryInputs = getFieldValues(formFields, jsonPayload, 'galleryImages');
+    const {
+      title = '',
+      slug = null,
+      category,
+      htmlContent = '',
+      language,
+      status,
+      publishStatus,
+      author,
+      coverImage,
+      galleryImages,
+    } = jsonPayload || {};
 
-    if (!title) {
+    if (!title || !htmlContent) {
       return res.status(400).json({ error: 'Title is required' });
     }
-
-    const slugValue = slugRaw ? String(slugRaw) : null;
-    const htmlContentValue = htmlContentRaw !== undefined && htmlContentRaw !== null ? String(htmlContentRaw) : '';
-    if (!htmlContentValue) {
-      return res.status(400).json({ error: 'htmlContent is required' });
+    let coverImagePath = coverImage || '';
+    if (coverImagePath.startsWith('data:image/')) {
+      coverImagePath = saveBase64Image(coverImagePath);
     }
-
-    const categoryValue = categoryRaw ? String(categoryRaw) : 'News';
-    const languageValue = languageRaw ? String(languageRaw) : 'AZ';
-    const statusValue = statusRaw ? String(statusRaw) : 'Active';
-    const publishStatusValue = publishStatusRaw ? String(publishStatusRaw) : 'Publish';
-    const authorValue = authorRaw ? String(authorRaw) : 'admin';
-
-    const coverImageFile = (fileFields.coverImage && fileFields.coverImage[0]) || null;
-    let coverImagePath = '';
-
-    try {
-      if (coverImageFile && coverImageFile.buffer?.length) {
-        if (coverImageFile.buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ error: 'Cover image size exceeds 5MB limit' });
-        }
-        const safeName = createSafeFilename(coverImageFile.filename, coverImageFile.mimeType);
-        coverImagePath = await uploadBuffer(
-          coverImageFile.buffer,
-          safeName,
-          coverImageFile.mimeType || 'application/octet-stream'
-        );
-      } else if (coverImageBase64) {
-        coverImagePath = await saveBase64Image(coverImageBase64);
-      } else if (existingCoverImage) {
-        coverImagePath = existingCoverImage;
-      }
-    } catch (error) {
-      return res.status(400).json({ error: error.message || 'Invalid cover image' });
-    }
-
     if (!coverImagePath) {
       return res.status(400).json({ error: 'Cover image is required' });
     }
 
-    let galleryPaths = [];
-    const existingGallery = parseJSONField(formFields, jsonPayload, 'existingGalleryImages', []);
-    if (existingGallery.length > 0) {
-      galleryPaths.push(...existingGallery);
-    }
-
-    try {
-      if (base64GalleryInputs.length > 0) {
-        const base64Gallery = await processGalleryInput(base64GalleryInputs);
-        galleryPaths.push(...base64Gallery);
-      }
-      for (const galleryFile of galleryFiles) {
-        if (!galleryFile?.buffer?.length) continue;
-        if (galleryFile.buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ error: 'Gallery image size exceeds 5MB limit' });
-        }
-        const safeName = createSafeFilename(galleryFile.filename, galleryFile.mimeType);
-        const uploadedUrl = await uploadBuffer(
-          galleryFile.buffer,
-          safeName,
-          galleryFile.mimeType || 'application/octet-stream'
-        );
-        galleryPaths.push(uploadedUrl);
-      }
-    } catch (error) {
-      return res.status(400).json({ error: error.message || 'Invalid gallery image' });
-    }
-
-    galleryPaths = [...new Set(galleryPaths.filter(Boolean))];
+    let galleryPaths = processGalleryInput(galleryImages);
+    galleryPaths = [...new Set((galleryPaths || []).filter(Boolean))];
 
     const now = new Date();
     const newPost = {
       id: `prod-${Date.now()}`,
-      title,
-      slug: slugValue,
+      title: String(title),
+      slug,
       image: coverImagePath,
-      description: createDescription(htmlContentValue),
-      htmlContent: htmlContentValue,
-      type: normalizeCategory(categoryValue),
+      description: createDescription(String(htmlContent)),
+      htmlContent: String(htmlContent),
+      type: normalizeCategory(category || 'News'),
       sharingTime: formatSharingDate(now),
       sharingHour: formatSharingHour(now),
-      status: statusValue,
-      publishStatus: publishStatusValue,
-      author: authorValue,
+      status: status || 'Active',
+      publishStatus: publishStatus || 'Publish',
+      author: author || 'admin',
       createdAt: now.toISOString(),
-      language: languageValue || 'AZ',
+      language: language || 'AZ',
     };
 
     if (galleryPaths.length > 0) {
@@ -496,110 +353,42 @@ export default async function handler(req, res) {
     }
 
     const existingPost = data.posts[index];
-    const titleRaw = getFieldValue(formFields, jsonPayload, 'title');
-    const slugRaw = getFieldValue(formFields, jsonPayload, 'slug');
-    const categoryRaw = getFieldValue(formFields, jsonPayload, 'category');
-    const htmlContentRaw = getFieldValue(formFields, jsonPayload, 'htmlContent');
-    const languageRaw = getFieldValue(formFields, jsonPayload, 'language');
-    const statusRaw = getFieldValue(formFields, jsonPayload, 'status');
-    const publishStatusRaw = getFieldValue(formFields, jsonPayload, 'publishStatus');
-    const authorRaw = getFieldValue(formFields, jsonPayload, 'author');
-    const existingCoverImage = getFieldValue(formFields, jsonPayload, 'existingCoverImage');
-    const coverImageBase64 = getFieldValue(formFields, jsonPayload, 'coverImage');
-    const galleryFiles = fileFields.galleryImages || [];
-    const base64GalleryInputs = getFieldValues(formFields, jsonPayload, 'galleryImages');
+    const {
+      title,
+      slug,
+      category,
+      htmlContent,
+      language,
+      status,
+      publishStatus,
+      author,
+      coverImage,
+      galleryImages,
+    } = jsonPayload || {};
 
-    let coverImagePath = existingPost.image || '';
-    try {
-      const coverImageFile = (fileFields.coverImage && fileFields.coverImage[0]) || null;
-      if (coverImageFile && coverImageFile.buffer?.length) {
-        if (coverImageFile.buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ error: 'Cover image size exceeds 5MB limit' });
-        }
-        const safeName = createSafeFilename(coverImageFile.filename, coverImageFile.mimeType);
-        coverImagePath = await uploadBuffer(
-          coverImageFile.buffer,
-          safeName,
-          coverImageFile.mimeType || 'application/octet-stream'
-        );
-      } else if (coverImageBase64) {
-        coverImagePath = await saveBase64Image(coverImageBase64);
-      } else if (existingCoverImage) {
-        coverImagePath = existingCoverImage;
-      }
-    } catch (error) {
-      return res.status(400).json({ error: error.message || 'Invalid cover image' });
+    let coverImagePath = coverImage || existingPost.image || '';
+    if (typeof coverImagePath === 'string' && coverImagePath.startsWith('data:image/')) {
+      coverImagePath = saveBase64Image(coverImagePath) || existingPost.image;
     }
 
-    if (!coverImagePath) {
-      coverImagePath = existingPost.image || '';
-    }
-
-    let galleryPaths = parseJSONField(formFields, jsonPayload, 'existingGalleryImages', existingPost.galleryImages || []);
-    if ((!galleryPaths || galleryPaths.length === 0) && existingPost.galleryImages?.length) {
-      galleryPaths = [...existingPost.galleryImages];
-    }
-
-    try {
-      if (base64GalleryInputs.length > 0) {
-        const base64Gallery = await processGalleryInput(base64GalleryInputs);
-        galleryPaths.push(...base64Gallery);
-      }
-      for (const galleryFile of galleryFiles) {
-        if (!galleryFile?.buffer?.length) continue;
-        if (galleryFile.buffer.length > MAX_IMAGE_SIZE) {
-          return res.status(400).json({ error: 'Gallery image size exceeds 5MB limit' });
-        }
-        const safeName = createSafeFilename(galleryFile.filename, galleryFile.mimeType);
-        const uploadedUrl = await uploadBuffer(
-          galleryFile.buffer,
-          safeName,
-          galleryFile.mimeType || 'application/octet-stream'
-        );
-        galleryPaths.push(uploadedUrl);
-      }
-    } catch (error) {
-      return res.status(400).json({ error: error.message || 'Invalid gallery image' });
-    }
-
+    let galleryPaths = Array.isArray(galleryImages) ? processGalleryInput(galleryImages) : existingPost.galleryImages || [];
     galleryPaths = [...new Set((galleryPaths || []).filter(Boolean))];
-
-    const titleValue =
-      titleRaw !== undefined && titleRaw !== null ? String(titleRaw).trim() || existingPost.title : existingPost.title;
-    const slugValue =
-      slugRaw !== undefined && slugRaw !== null ? (slugRaw ? String(slugRaw) : null) : existingPost.slug ?? null;
-    const categoryValue =
-      categoryRaw !== undefined && categoryRaw !== null ? String(categoryRaw) : existingPost.type || 'News';
-    const htmlContentValue =
-      htmlContentRaw !== undefined && htmlContentRaw !== null
-        ? String(htmlContentRaw)
-        : existingPost.htmlContent || existingPost.description || '';
-    const languageValue =
-      languageRaw !== undefined && languageRaw !== null ? String(languageRaw) : existingPost.language || 'AZ';
-    const statusValue =
-      statusRaw !== undefined && statusRaw !== null ? String(statusRaw) : existingPost.status || 'Active';
-    const publishStatusValue =
-      publishStatusRaw !== undefined && publishStatusRaw !== null
-        ? String(publishStatusRaw)
-        : existingPost.publishStatus || 'Publish';
-    const authorValue =
-      authorRaw !== undefined && authorRaw !== null ? String(authorRaw) : existingPost.author || 'admin';
 
     const updatedPost = {
       ...existingPost,
-      title: titleValue,
-      slug: slugValue,
-      type: normalizeCategory(categoryValue),
+      title: title !== undefined ? String(title).trim() : existingPost.title,
+      slug: slug !== undefined ? slug : existingPost.slug ?? null,
+      type: normalizeCategory(category !== undefined ? category : existingPost.type || 'News'),
       image: coverImagePath || existingPost.image,
-      htmlContent: htmlContentValue,
-      language: languageValue || 'AZ',
-      status: statusValue,
-      publishStatus: publishStatusValue,
-      author: authorValue,
+      htmlContent: htmlContent !== undefined ? String(htmlContent) : existingPost.htmlContent || existingPost.description || '',
+      language: language !== undefined ? String(language) : existingPost.language || 'AZ',
+      status: status !== undefined ? String(status) : existingPost.status || 'Active',
+      publishStatus: publishStatus !== undefined ? String(publishStatus) : existingPost.publishStatus || 'Publish',
+      author: author !== undefined ? String(author) : existingPost.author || 'admin',
     };
 
-    if (htmlContentValue) {
-      updatedPost.description = createDescription(htmlContentValue);
+    if (updatedPost.htmlContent) {
+      updatedPost.description = createDescription(updatedPost.htmlContent);
     }
 
     if (galleryPaths.length > 0) {

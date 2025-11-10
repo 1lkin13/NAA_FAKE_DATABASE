@@ -4,7 +4,6 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
-import Busboy from 'busboy';
 import { UTApi } from 'uploadthing/server';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,8 +91,11 @@ const ensureFilesDir = () => {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
 
-const uploadthingSecret = process.env.UPLOADTHING_SECRET;
-const utapi = uploadthingSecret ? new UTApi({ apiKey: uploadthingSecret }) : null;
+const uploadthingToken = process.env.UPLOADTHING_TOKEN;
+const uploadthingSecret = process.env.UPLOADTHING_SECRET; // backward compatibility
+const utapi = uploadthingToken
+  ? new UTApi({ token: uploadthingToken })
+  : (uploadthingSecret ? new UTApi({ token: uploadthingSecret }) : null);
 const isReadOnlyFs = !!process.env.VERCEL;
 
 const uploadBuffer = async (buffer, filename, mimeType) => {
@@ -176,89 +178,6 @@ const processGalleryInput = async (gallery) => {
     }
   }
   return results;
-};
-
-const normalizeFieldName = (name = '') => name.replace(/\[\d+\]$/, '');
-
-const parseMultipartForm = (req) =>
-  new Promise((resolve, reject) => {
-    const busboy = Busboy({ headers: req.headers });
-    const fields = {};
-    const files = {};
-
-    busboy.on('field', (name, value) => {
-      const normalized = normalizeFieldName(name);
-      if (Object.prototype.hasOwnProperty.call(fields, normalized)) {
-        const current = fields[normalized];
-        if (Array.isArray(current)) {
-          current.push(value);
-        } else {
-          fields[normalized] = [current, value];
-        }
-      } else {
-        fields[normalized] = value;
-      }
-    });
-
-    busboy.on('file', (name, file, info) => {
-      const normalized = normalizeFieldName(name);
-      const chunks = [];
-      file.on('data', (chunk) => chunks.push(chunk));
-      file.on('error', (error) => reject(error));
-      file.on('end', () => {
-        const buffer = Buffer.concat(chunks);
-        if (!files[normalized]) {
-          files[normalized] = [];
-        }
-        files[normalized].push({
-          buffer,
-          filename: info?.filename || `upload-${Date.now()}`,
-          mimeType: info?.mimeType || 'application/octet-stream',
-        });
-      });
-    });
-
-    busboy.on('error', (error) => reject(error));
-    busboy.on('finish', () => resolve({ fields, files }));
-
-    req.pipe(busboy);
-  });
-
-const hasOwn = (obj, key) => Object.prototype.hasOwnProperty.call(obj || {}, key);
-
-const getFieldValue = (formFields, jsonFields, key) => {
-  if (hasOwn(formFields, key)) {
-    const value = formFields[key];
-    return Array.isArray(value) ? value[value.length - 1] : value;
-  }
-  if (hasOwn(jsonFields, key)) {
-    const value = jsonFields[key];
-    return Array.isArray(value) ? value[value.length - 1] : value;
-  }
-  return undefined;
-};
-
-const getFieldValues = (formFields, jsonFields, key) => {
-  if (hasOwn(formFields, key)) {
-    const value = formFields[key];
-    return Array.isArray(value) ? value : [value];
-  }
-  if (hasOwn(jsonFields, key)) {
-    const value = jsonFields[key];
-    return Array.isArray(value) ? value : [value];
-  }
-  return [];
-};
-
-const parseJSONField = (formFields, jsonFields, key, fallback = []) => {
-  const rawValue = getFieldValue(formFields, jsonFields, key);
-  if (!rawValue) return Array.isArray(fallback) ? [...fallback] : fallback;
-  try {
-    const parsed = typeof rawValue === 'string' ? JSON.parse(rawValue) : rawValue;
-    return Array.isArray(parsed) ? parsed.filter(Boolean) : Array.isArray(fallback) ? [...fallback] : fallback;
-  } catch {
-    return Array.isArray(fallback) ? [...fallback] : fallback;
-  }
 };
 
 const getFileExtension = (filename = '', mimeType = '') => {
@@ -348,127 +267,55 @@ app.get('/api/posts/:id', (req, res) => {
 // POST /api/posts
 app.post('/api/posts', async (req, res) => {
   const data = loadData();
-  const contentType = req.headers['content-type'] || '';
-
-  let formFields = {};
-  let fileFields = {};
-  let jsonPayload = {};
-
-  if (contentType.includes('multipart/form-data')) {
-    try {
-      const parsed = await parseMultipartForm(req);
-      formFields = parsed.fields || {};
-      fileFields = parsed.files || {};
-    } catch (error) {
-      console.error('Multipart parsing error:', error);
-      return res.status(400).json({ error: 'Invalid multipart form data' });
-    }
-  } else {
-    jsonPayload = req.body || {};
-  }
-
-  const title = (getFieldValue(formFields, jsonPayload, 'title') || '').toString().trim();
-  const slugRaw = getFieldValue(formFields, jsonPayload, 'slug');
-  const categoryRaw = getFieldValue(formFields, jsonPayload, 'category');
-  const htmlContentRaw = getFieldValue(formFields, jsonPayload, 'htmlContent');
-  const languageRaw = getFieldValue(formFields, jsonPayload, 'language');
-  const statusRaw = getFieldValue(formFields, jsonPayload, 'status');
-  const publishStatusRaw = getFieldValue(formFields, jsonPayload, 'publishStatus');
-  const authorRaw = getFieldValue(formFields, jsonPayload, 'author');
-  const existingCoverImage = getFieldValue(formFields, jsonPayload, 'existingCoverImage');
-  const coverImageBase64 = getFieldValue(formFields, jsonPayload, 'coverImage');
-  const galleryFiles = fileFields.galleryImages || [];
-  const base64GalleryInputs = getFieldValues(formFields, jsonPayload, 'galleryImages');
+  const {
+    title = '',
+    slug = null,
+    category,
+    htmlContent = '',
+    language,
+    status,
+    publishStatus,
+    author,
+    coverImage,
+    galleryImages,
+  } = req.body || {};
 
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
   }
 
-  const slugValue = slugRaw ? String(slugRaw) : null;
-  const htmlContentValue = htmlContentRaw !== undefined && htmlContentRaw !== null ? String(htmlContentRaw) : '';
-  if (!htmlContentValue) {
+  if (!htmlContent) {
     return res.status(400).json({ error: 'htmlContent is required' });
   }
 
-  const categoryValue = categoryRaw ? String(categoryRaw) : 'News';
-  const languageValue = languageRaw ? String(languageRaw) : 'AZ';
-  const statusValue = statusRaw ? String(statusRaw) : 'Active';
-  const publishStatusValue = publishStatusRaw ? String(publishStatusRaw) : 'Publish';
-  const authorValue = authorRaw ? String(authorRaw) : 'admin';
-
-  const coverImageFile = (fileFields.coverImage && fileFields.coverImage[0]) || null;
-  let coverImagePath = '';
-
-  try {
-    if (coverImageFile && coverImageFile.buffer?.length) {
-      if (coverImageFile.buffer.length > MAX_IMAGE_SIZE) {
-        return res.status(400).json({ error: 'Cover image size exceeds 5MB limit' });
-      }
-      const safeName = createSafeFilename(coverImageFile.filename, coverImageFile.mimeType);
-      coverImagePath = await uploadBuffer(
-        coverImageFile.buffer,
-        safeName,
-        coverImageFile.mimeType || 'application/octet-stream'
-      );
-    } else if (coverImageBase64) {
-      coverImagePath = await saveBase64Image(coverImageBase64);
-    } else if (existingCoverImage) {
-      coverImagePath = existingCoverImage;
-    }
-  } catch (error) {
-    return res.status(400).json({ error: error.message || 'Invalid cover image' });
+  let coverImagePath = coverImage || '';
+  if (coverImagePath.startsWith('data:image/')) {
+    coverImagePath = await saveBase64Image(coverImagePath);
   }
 
   if (!coverImagePath) {
     return res.status(400).json({ error: 'Cover image is required' });
   }
 
-  let galleryPaths = [];
-  const existingGallery = parseJSONField(formFields, jsonPayload, 'existingGalleryImages', []);
-  if (existingGallery.length > 0) {
-    galleryPaths.push(...existingGallery);
-  }
-
-  try {
-    if (base64GalleryInputs.length > 0) {
-      const base64Gallery = await processGalleryInput(base64GalleryInputs);
-      galleryPaths.push(...base64Gallery);
-    }
-    for (const galleryFile of galleryFiles) {
-      if (!galleryFile?.buffer?.length) continue;
-      if (galleryFile.buffer.length > MAX_IMAGE_SIZE) {
-        return res.status(400).json({ error: 'Gallery image size exceeds 5MB limit' });
-      }
-      const safeName = createSafeFilename(galleryFile.filename, galleryFile.mimeType);
-      const uploadedUrl = await uploadBuffer(
-        galleryFile.buffer,
-        safeName,
-        galleryFile.mimeType || 'application/octet-stream'
-      );
-      galleryPaths.push(uploadedUrl);
-    }
-  } catch (error) {
-    return res.status(400).json({ error: error.message || 'Invalid gallery image' });
-  }
-
+  let galleryPaths = Array.isArray(galleryImages) ? processGalleryInput(galleryImages) : [];
   galleryPaths = [...new Set(galleryPaths.filter(Boolean))];
 
   const now = new Date();
   const newPost = {
     id: `prod-${Date.now()}`,
-    title,
-    slug: slugValue,
+    title: String(title),
+    slug,
     image: coverImagePath,
-    description: createDescription(htmlContentValue),
-    htmlContent: htmlContentValue,
-    type: normalizeCategory(categoryValue),
+    description: createDescription(String(htmlContent)),
+    htmlContent: String(htmlContent),
+    type: normalizeCategory(category || 'News'),
     sharingTime: formatSharingDate(now),
     sharingHour: formatSharingHour(now),
-    status: statusValue,
-    publishStatus: publishStatusValue,
-    author: authorValue,
+    status: status || 'Active',
+    publishStatus: publishStatus || 'Publish',
+    author: author || 'admin',
     createdAt: now.toISOString(),
-    language: languageValue || 'AZ',
+    language: language || 'AZ',
   };
 
   if (galleryPaths.length > 0) {
@@ -493,91 +340,31 @@ app.put('/api/posts/:id', async (req, res) => {
     return res.status(404).json({ error: 'Post not found' });
   }
 
-  const contentType = req.headers['content-type'] || '';
-  let formFields = {};
-  let fileFields = {};
-  let jsonPayload = {};
-
-  if (contentType.includes('multipart/form-data')) {
-    try {
-      const parsed = await parseMultipartForm(req);
-      formFields = parsed.fields || {};
-      fileFields = parsed.files || {};
-    } catch (error) {
-      console.error('Multipart parsing error:', error);
-      return res.status(400).json({ error: 'Invalid multipart form data' });
-    }
-  } else {
-    jsonPayload = req.body || {};
-  }
-
   const existingPost = data.posts[index];
+  const {
+    title,
+    slug,
+    category,
+    htmlContent,
+    language,
+    status,
+    publishStatus,
+    author,
+    coverImage,
+    galleryImages,
+  } = req.body || {};
 
-  const titleRaw = getFieldValue(formFields, jsonPayload, 'title');
-  const slugRaw = getFieldValue(formFields, jsonPayload, 'slug');
-  const categoryRaw = getFieldValue(formFields, jsonPayload, 'category');
-  const htmlContentRaw = getFieldValue(formFields, jsonPayload, 'htmlContent');
-  const languageRaw = getFieldValue(formFields, jsonPayload, 'language');
-  const statusRaw = getFieldValue(formFields, jsonPayload, 'status');
-  const publishStatusRaw = getFieldValue(formFields, jsonPayload, 'publishStatus');
-  const authorRaw = getFieldValue(formFields, jsonPayload, 'author');
-  const existingCoverImage = getFieldValue(formFields, jsonPayload, 'existingCoverImage');
-  const coverImageBase64 = getFieldValue(formFields, jsonPayload, 'coverImage');
-  const galleryFiles = fileFields.galleryImages || [];
-  const base64GalleryInputs = getFieldValues(formFields, jsonPayload, 'galleryImages');
-
-  let coverImagePath = existingPost.image || '';
-  try {
-    const coverImageFile = (fileFields.coverImage && fileFields.coverImage[0]) || null;
-    if (coverImageFile && coverImageFile.buffer?.length) {
-      if (coverImageFile.buffer.length > MAX_IMAGE_SIZE) {
-        return res.status(400).json({ error: 'Cover image size exceeds 5MB limit' });
-      }
-      const safeName = createSafeFilename(coverImageFile.filename, coverImageFile.mimeType);
-      coverImagePath = await uploadBuffer(
-        coverImageFile.buffer,
-        safeName,
-        coverImageFile.mimeType || 'application/octet-stream'
-      );
-    } else if (coverImageBase64) {
-      coverImagePath = await saveBase64Image(coverImageBase64);
-    } else if (existingCoverImage) {
-      coverImagePath = existingCoverImage;
-    }
-  } catch (error) {
-    return res.status(400).json({ error: error.message || 'Invalid cover image' });
+  let coverImagePath = coverImage || existingPost.image || '';
+  if (typeof coverImagePath === 'string' && coverImagePath.startsWith('data:image/')) {
+    coverImagePath = await saveBase64Image(coverImagePath) || existingPost.image;
   }
 
   if (!coverImagePath) {
     coverImagePath = existingPost.image || '';
   }
 
-  let galleryPaths = parseJSONField(formFields, jsonPayload, 'existingGalleryImages', existingPost.galleryImages || []);
-  if ((!galleryPaths || galleryPaths.length === 0) && existingPost.galleryImages?.length) {
-    galleryPaths = [...existingPost.galleryImages];
-  }
-
-  try {
-    if (base64GalleryInputs.length > 0) {
-      const base64Gallery = await processGalleryInput(base64GalleryInputs);
-      galleryPaths.push(...base64Gallery);
-    }
-    for (const galleryFile of galleryFiles) {
-      if (!galleryFile?.buffer?.length) continue;
-      if (galleryFile.buffer.length > MAX_IMAGE_SIZE) {
-        return res.status(400).json({ error: 'Gallery image size exceeds 5MB limit' });
-      }
-      const safeName = createSafeFilename(galleryFile.filename, galleryFile.mimeType);
-      const uploadedUrl = await uploadBuffer(
-        galleryFile.buffer,
-        safeName,
-        galleryFile.mimeType || 'application/octet-stream'
-      );
-      galleryPaths.push(uploadedUrl);
-    }
-  } catch (error) {
-    return res.status(400).json({ error: error.message || 'Invalid gallery image' });
-  }
+  let galleryPaths = Array.isArray(galleryImages) ? processGalleryInput(galleryImages) : existingPost.galleryImages || [];
+  galleryPaths = [...new Set((galleryPaths || []).filter(Boolean))];
 
   galleryPaths = [...new Set((galleryPaths || []).filter(Boolean))];
 
@@ -604,19 +391,19 @@ app.put('/api/posts/:id', async (req, res) => {
 
   const updatedPost = {
     ...existingPost,
-    title: titleValue,
-    slug: slugValue,
-    type: normalizeCategory(categoryValue),
+    title: title !== undefined ? String(title).trim() : existingPost.title,
+    slug: slug !== undefined ? slug : existingPost.slug ?? null,
+    type: normalizeCategory(category !== undefined ? category : existingPost.type || 'News'),
     image: coverImagePath || existingPost.image,
-    htmlContent: htmlContentValue,
-    language: languageValue || 'AZ',
-    status: statusValue,
-    publishStatus: publishStatusValue,
-    author: authorValue,
+    htmlContent: htmlContent !== undefined ? String(htmlContent) : existingPost.htmlContent || existingPost.description || '',
+    language: language !== undefined ? String(language) : existingPost.language || 'AZ',
+    status: status !== undefined ? String(status) : existingPost.status || 'Active',
+    publishStatus: publishStatus !== undefined ? String(publishStatus) : existingPost.publishStatus || 'Publish',
+    author: author !== undefined ? String(author) : existingPost.author || 'admin',
   };
 
-  if (htmlContentValue) {
-    updatedPost.description = createDescription(htmlContentValue);
+  if (updatedPost.htmlContent) {
+    updatedPost.description = createDescription(updatedPost.htmlContent);
   }
 
   if (galleryPaths.length > 0) {
