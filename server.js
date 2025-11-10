@@ -22,8 +22,8 @@ const corsOptions = {
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  credentials: true,
   maxAge: 86400,
+  exposedHeaders: ['Content-Length', 'Content-Type'],
 };
 
 // Middleware
@@ -65,6 +65,79 @@ function saveData(data) {
   }
 }
 
+const stripHtml = (html = '') => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+const createDescription = (html = '') => {
+  const plain = stripHtml(html);
+  return plain.length > 160 ? `${plain.slice(0, 160)}...` : plain;
+};
+const formatSharingDate = (date) => date.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const formatSharingHour = (date) => date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+const normalizeCategory = (category) => (category === 'Announcement' ? 'Announcement' : 'News');
+
+const normalizeGallery = (gallery) => {
+  if (!gallery && gallery !== '') {
+    return [];
+  }
+  if (Array.isArray(gallery)) {
+    return gallery.filter(Boolean);
+  }
+  if (typeof gallery === 'string') {
+    const trimmed = gallery.trim();
+    if (!trimmed || trimmed === 'undefined' || trimmed === 'null') {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean);
+      }
+    } catch (error) {
+      // ignore
+    }
+    return [trimmed];
+  }
+  return [];
+};
+
+const ensureFilesDir = () => {
+  mkdirSync(FILES_DIR, { recursive: true });
+};
+
+const saveBase64Image = (imageData) => {
+  if (!imageData || typeof imageData !== 'string') {
+    return imageData;
+  }
+
+  if (!imageData.startsWith('data:image/')) {
+    return imageData;
+  }
+
+  ensureFilesDir();
+
+  const matches = imageData.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return imageData;
+  }
+
+  const extension = matches[1].replace('jpeg', 'jpg');
+  const base64Data = matches[2];
+  const buffer = Buffer.from(base64Data, 'base64');
+
+  const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
+  const filepath = join(FILES_DIR, filename);
+  writeFileSync(filepath, buffer);
+
+  return `/files/${filename}`;
+};
+
+const processGalleryInput = (gallery) => {
+  const normalized = normalizeGallery(gallery);
+  if (normalized.length === 0) {
+    return [];
+  }
+  return normalized.map((item) => saveBase64Image(item));
+};
+
 // Routes
 app.get('/', (req, res) => {
   res.json({
@@ -84,7 +157,7 @@ app.get('/api/posts', (req, res) => {
 
   // Filter by type
   if (req.query.type && req.query.type !== 'All Posts') {
-    posts = posts.filter((post) => post.type === req.query.type);
+    posts = posts.filter((post) => post.type === normalizeCategory(req.query.type));
   }
 
   // Filter by status
@@ -98,8 +171,8 @@ app.get('/api/posts', (req, res) => {
     posts = posts.filter(
       (post) =>
         post.title.toLowerCase().includes(searchLower) ||
-        post.description.toLowerCase().includes(searchLower) ||
-        post.author.toLowerCase().includes(searchLower)
+        (post.description || '').toLowerCase().includes(searchLower) ||
+        (post.author || '').toLowerCase().includes(searchLower)
     );
   }
 
@@ -137,35 +210,121 @@ app.get('/api/posts/:id', (req, res) => {
 // POST /api/posts
 app.post('/api/posts', (req, res) => {
   const data = loadData();
+  const {
+    title,
+    slug,
+    category,
+    htmlContent,
+    coverImage,
+    galleryImages,
+    language,
+    status,
+    publishStatus,
+    author,
+  } = req.body || {};
+
+  if (!title || !htmlContent || !coverImage) {
+    return res.status(400).json({ error: 'Missing required fields (title, htmlContent, coverImage)' });
+  }
+
+  const now = new Date();
+  const coverImagePath = saveBase64Image(coverImage);
+  const galleryPaths = processGalleryInput(galleryImages);
+  const normalizedGallery = normalizeGallery(galleryImages);
+
   const newPost = {
-    ...req.body,
-    id: `post-${Date.now()}`,
-    createdAt: new Date().toISOString(),
+    id: `prod-${Date.now()}`,
+    title: title.trim(),
+    slug: slug || null,
+    image: coverImagePath,
+    description: createDescription(htmlContent),
+    htmlContent: htmlContent,
+    type: normalizeCategory(category),
+    sharingTime: formatSharingDate(now),
+    sharingHour: formatSharingHour(now),
+    status: status || 'Active',
+    publishStatus: publishStatus || 'Publish',
+    author: author || 'admin',
+    createdAt: now.toISOString(),
+    language: language || 'AZ',
   };
-  data.posts.push(newPost);
+
+  if (galleryPaths.length > 0) {
+    newPost.galleryImages = galleryPaths;
+  } else if (normalizedGallery.length > 0) {
+    newPost.galleryImages = normalizedGallery;
+  }
+
+  data.posts.unshift(newPost);
   data.total = data.posts.length;
 
   if (saveData(data)) {
-    res.status(201).json(newPost);
-  } else {
-    res.status(500).json({ error: 'Failed to save post' });
+    return res.status(201).json(newPost);
   }
+
+  return res.status(500).json({ error: 'Failed to save post' });
 });
 
 // PUT /api/posts/:id
 app.put('/api/posts/:id', (req, res) => {
   const data = loadData();
   const index = data.posts.findIndex((p) => p.id === req.params.id);
-  if (index !== -1) {
-    data.posts[index] = { ...data.posts[index], ...req.body };
-    if (saveData(data)) {
-      res.json(data.posts[index]);
-    } else {
-      res.status(500).json({ error: 'Failed to update post' });
-    }
-  } else {
-    res.status(404).json({ error: 'Post not found' });
+  if (index === -1) {
+    return res.status(404).json({ error: 'Post not found' });
   }
+
+  const existingPost = data.posts[index];
+  const {
+    title,
+    slug,
+    category,
+    htmlContent,
+    coverImage,
+    galleryImages,
+    language,
+    status,
+    publishStatus,
+    author,
+  } = req.body || {};
+
+  const updatedPost = {
+    ...existingPost,
+    title: title !== undefined ? title.trim() : existingPost.title,
+    slug: slug !== undefined ? slug : existingPost.slug,
+    type: category ? normalizeCategory(category) : existingPost.type,
+    image: saveBase64Image(coverImage) || existingPost.image,
+    htmlContent: htmlContent !== undefined ? htmlContent : existingPost.htmlContent || existingPost.description || '',
+    language: language || existingPost.language || 'AZ',
+    status: status || existingPost.status || 'Active',
+    publishStatus: publishStatus || existingPost.publishStatus || 'Publish',
+    author: author || existingPost.author || 'admin',
+  };
+
+  if (htmlContent !== undefined) {
+    updatedPost.description = createDescription(htmlContent);
+  }
+
+  if (galleryImages !== undefined) {
+    const galleryPaths = processGalleryInput(galleryImages);
+    if (galleryPaths.length > 0) {
+      updatedPost.galleryImages = galleryPaths;
+    } else {
+      const normalizedGallery = normalizeGallery(galleryImages);
+      if (normalizedGallery.length > 0) {
+        updatedPost.galleryImages = normalizedGallery;
+      } else {
+        delete updatedPost.galleryImages;
+      }
+    }
+  }
+
+  data.posts[index] = updatedPost;
+
+  if (saveData(data)) {
+    return res.json(updatedPost);
+  }
+
+  return res.status(500).json({ error: 'Failed to update post' });
 });
 
 // DELETE /api/posts/:id
