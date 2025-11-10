@@ -73,14 +73,20 @@ const saveBase64Image = (imageData) => {
 
   ensureFilesDir();
 
-  const matches = imageData.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
+  const [metadata, dataPart] = imageData.split(';base64,');
+  if (!dataPart) {
     return imageData;
   }
 
-  const extension = matches[1].replace('jpeg', 'jpg');
-  const base64Data = matches[2];
-  const buffer = Buffer.from(base64Data, 'base64');
+  const mimeType = metadata.replace(/^data:/, '') || 'image/png';
+  const extension = mimeType.split('/')[1]?.split('+')[0] || 'png';
+  const sanitized = dataPart.replace(/\s/g, '');
+
+  // Decode base64 regardless of size; Vercel will reject oversized payloads automatically
+  const buffer = Buffer.from(sanitized, 'base64');
+  if (buffer.length === 0) {
+    return imageData;
+  }
 
   const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
   const filepath = join(FILES_DIR, filename);
