@@ -1,7 +1,7 @@
 import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
-import { uploadFilesToUploadThing } from '../../lib/uploadthing-server.js';
+import { uploadFilesToUploadThing, deleteFilesFromUploadThing } from '../../lib/uploadthing-server.js';
 
 export const config = { api: { bodyParser: false } };
 
@@ -68,6 +68,35 @@ export default function handler(req, res) {
     }
 
     try {
+      const action = getFieldValue(fields.action);
+      const existingId = getFieldValue(fields.existingId);
+
+      if (action === 'delete') {
+        if (!existingId) {
+          return res.status(400).json({ error: 'existingId is required for delete action' });
+        }
+
+        const posts = readPosts();
+        const deleteIndex = posts.findIndex((post) => String(post.id) === String(existingId));
+
+        if (deleteIndex === -1) {
+          return res.status(404).json({ error: 'Post not found' });
+        }
+
+        const postToDelete = posts[deleteIndex];
+
+        try {
+          await deleteFilesFromUploadThing(String(existingId));
+        } catch (deleteError) {
+          console.warn('Failed to delete files from UploadThing for post', existingId, deleteError);
+        }
+
+        posts.splice(deleteIndex, 1);
+        writePosts(posts);
+
+        return res.status(200).json({ message: 'Post deleted successfully', deletedPost: postToDelete });
+      }
+
       const coverFile = Array.isArray(files.coverImage) ? files.coverImage[0] : files.coverImage;
       const galleryFiles = Array.isArray(files.galleryImages)
         ? files.galleryImages
@@ -75,7 +104,6 @@ export default function handler(req, res) {
         ? [files.galleryImages]
         : [];
 
-      const existingId = getFieldValue(fields.existingId);
       const existingCoverImageUrl = getFieldValue(fields.coverImageUrl) || '';
       const existingGalleryUrls = toArray(
         fields['galleryImageUrls[]'] ?? fields.galleryImageUrls ?? fields.existingGalleryImages
