@@ -98,30 +98,18 @@ const isReadOnlyFs = !!process.env.VERCEL;
 
 const uploadBuffer = async (buffer, filename, mimeType) => {
   if (utapi) {
-    let FileCtor = globalThis.File;
-    if (!FileCtor) {
-      try {
-        const bufferModule = await import('node:buffer');
-        FileCtor = bufferModule?.File;
-      } catch {
-        FileCtor = undefined;
-      }
-    }
-    if (!FileCtor) {
-      throw new Error('File constructor is not available in this environment');
-    }
-
-    const file = new FileCtor([buffer], filename, { type: mimeType });
-    const result = await utapi.uploadFile(file);
+    const blob = new Blob([buffer], { type: mimeType || 'application/octet-stream' });
+    const result = await utapi.uploadFiles([{ name: filename, blob }]);
+    const first = Array.isArray(result) ? result[0] : undefined;
     const fileUrl =
-      result?.data?.url ??
-      result?.data?.fileUrl ??
-      result?.url ??
-      result?.fileUrl;
+      first?.data?.url ??
+      first?.data?.fileUrl ??
+      first?.url ??
+      first?.fileUrl;
     if (!fileUrl) {
       const message =
-        (Array.isArray(result?.error) ? result?.error[0]?.message : result?.error?.message) ||
-        (typeof result?.error === 'string' ? result.error : null) ||
+        (Array.isArray(first?.error) ? first?.error[0]?.message : first?.error?.message) ||
+        (typeof first?.error === 'string' ? first.error : null) ||
         'Failed to upload image';
       throw new Error(message);
     }
