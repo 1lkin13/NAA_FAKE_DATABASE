@@ -62,6 +62,8 @@ const ensureFilesDir = () => {
   mkdirSync(FILES_DIR, { recursive: true });
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+
 const saveBase64Image = (imageData) => {
   if (!imageData || typeof imageData !== 'string') {
     return imageData;
@@ -75,17 +77,26 @@ const saveBase64Image = (imageData) => {
 
   const [metadata, dataPart] = imageData.split(';base64,');
   if (!dataPart) {
-    return imageData;
+    throw new Error('Invalid image data format');
   }
 
   const mimeType = metadata.replace(/^data:/, '') || 'image/png';
   const extension = mimeType.split('/')[1]?.split('+')[0] || 'png';
   const sanitized = dataPart.replace(/\s/g, '');
 
-  // Decode base64 regardless of size; Vercel will reject oversized payloads automatically
-  const buffer = Buffer.from(sanitized, 'base64');
-  if (buffer.length === 0) {
-    return imageData;
+  let buffer;
+  try {
+    buffer = Buffer.from(sanitized, 'base64');
+  } catch (error) {
+    throw new Error('Image data is not valid base64');
+  }
+
+  if (!buffer || buffer.length === 0) {
+    throw new Error('Image data is empty');
+  }
+
+  if (buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error('Image size exceeds 5MB limit');
   }
 
   const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
@@ -212,8 +223,19 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields (title, htmlContent, coverImage)' });
     }
 
-    const savedCoverImage = saveBase64Image(coverImage);
-    const galleryPaths = processGalleryInput(galleryImages);
+    let savedCoverImage;
+    try {
+      savedCoverImage = saveBase64Image(coverImage);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Invalid cover image' });
+    }
+
+    let galleryPaths = [];
+    try {
+      galleryPaths = processGalleryInput(galleryImages);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Invalid gallery image' });
+    }
 
     const now = new Date();
     const normalizedGallery = normalizeGallery(galleryImages);
@@ -237,8 +259,6 @@ export default async function handler(req, res) {
 
     if (galleryPaths.length > 0) {
       newPost.galleryImages = galleryPaths;
-    } else if (normalizedGallery.length > 0) {
-      newPost.galleryImages = normalizedGallery;
     }
 
     data.posts.unshift(newPost);
@@ -271,7 +291,12 @@ export default async function handler(req, res) {
       author,
     } = payload;
 
-    const savedCoverImage = saveBase64Image(coverImage);
+    let savedCoverImage;
+    try {
+      savedCoverImage = saveBase64Image(coverImage);
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Invalid cover image' });
+    }
 
     const updatedPost = {
       ...existingPost,
@@ -291,16 +316,15 @@ export default async function handler(req, res) {
     }
 
     if (galleryImages !== undefined) {
-      const galleryPaths = processGalleryInput(galleryImages);
-      if (galleryPaths.length > 0) {
-        updatedPost.galleryImages = galleryPaths;
-      } else {
-        const normalizedGallery = normalizeGallery(galleryImages);
-        if (normalizedGallery.length > 0) {
-          updatedPost.galleryImages = normalizedGallery;
+      try {
+        const galleryPaths = processGalleryInput(galleryImages);
+        if (galleryPaths.length > 0) {
+          updatedPost.galleryImages = galleryPaths;
         } else {
           delete updatedPost.galleryImages;
         }
+      } catch (error) {
+        return res.status(400).json({ error: error.message || 'Invalid gallery image' });
       }
     }
 

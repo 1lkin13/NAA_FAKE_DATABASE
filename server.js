@@ -103,6 +103,8 @@ const ensureFilesDir = () => {
   mkdirSync(FILES_DIR, { recursive: true });
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB per image
+
 const saveBase64Image = (imageData) => {
   if (!imageData || typeof imageData !== 'string') {
     return imageData;
@@ -116,16 +118,26 @@ const saveBase64Image = (imageData) => {
 
   const [metadata, dataPart] = imageData.split(';base64,');
   if (!dataPart) {
-    return imageData;
+    throw new Error('Invalid image data format');
   }
 
   const mimeType = metadata.replace(/^data:/, '') || 'image/png';
   const extension = mimeType.split('/')[1]?.split('+')[0] || 'png';
   const sanitized = dataPart.replace(/\s/g, '');
-  const buffer = Buffer.from(sanitized, 'base64');
 
-  if (buffer.length === 0) {
-    return imageData;
+  let buffer;
+  try {
+    buffer = Buffer.from(sanitized, 'base64');
+  } catch (error) {
+    throw new Error('Image data is not valid base64');
+  }
+
+  if (!buffer || buffer.length === 0) {
+    throw new Error('Image data is empty');
+  }
+
+  if (buffer.length > MAX_IMAGE_SIZE) {
+    throw new Error('Image size exceeds 5MB limit');
   }
 
   const filename = `upload-${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${extension}`;
@@ -233,8 +245,19 @@ app.post('/api/posts', (req, res) => {
   }
 
   const now = new Date();
-  const coverImagePath = saveBase64Image(coverImage);
-  const galleryPaths = processGalleryInput(galleryImages);
+  let coverImagePath;
+  try {
+    coverImagePath = saveBase64Image(coverImage);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Invalid cover image' });
+  }
+
+  let galleryPaths = [];
+  try {
+    galleryPaths = processGalleryInput(galleryImages);
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Invalid gallery image' });
+  }
   const normalizedGallery = normalizeGallery(galleryImages);
 
   const newPost = {
@@ -256,8 +279,6 @@ app.post('/api/posts', (req, res) => {
 
   if (galleryPaths.length > 0) {
     newPost.galleryImages = galleryPaths;
-  } else if (normalizedGallery.length > 0) {
-    newPost.galleryImages = normalizedGallery;
   }
 
   data.posts.unshift(newPost);
@@ -292,12 +313,19 @@ app.put('/api/posts/:id', (req, res) => {
     author,
   } = req.body || {};
 
+  let coverImagePath = existingPost.image;
+  try {
+    coverImagePath = saveBase64Image(coverImage) || existingPost.image;
+  } catch (error) {
+    return res.status(400).json({ error: error.message || 'Invalid cover image' });
+  }
+
   const updatedPost = {
     ...existingPost,
     title: title !== undefined ? title.trim() : existingPost.title,
     slug: slug !== undefined ? slug : existingPost.slug,
     type: category ? normalizeCategory(category) : existingPost.type,
-    image: saveBase64Image(coverImage) || existingPost.image,
+    image: coverImagePath,
     htmlContent: htmlContent !== undefined ? htmlContent : existingPost.htmlContent || existingPost.description || '',
     language: language || existingPost.language || 'AZ',
     status: status || existingPost.status || 'Active',
@@ -310,16 +338,15 @@ app.put('/api/posts/:id', (req, res) => {
   }
 
   if (galleryImages !== undefined) {
-    const galleryPaths = processGalleryInput(galleryImages);
-    if (galleryPaths.length > 0) {
-      updatedPost.galleryImages = galleryPaths;
-    } else {
-      const normalizedGallery = normalizeGallery(galleryImages);
-      if (normalizedGallery.length > 0) {
-        updatedPost.galleryImages = normalizedGallery;
+    try {
+      const galleryPaths = processGalleryInput(galleryImages);
+      if (galleryPaths.length > 0) {
+        updatedPost.galleryImages = galleryPaths;
       } else {
         delete updatedPost.galleryImages;
       }
+    } catch (error) {
+      return res.status(400).json({ error: error.message || 'Invalid gallery image' });
     }
   }
 
