@@ -48,15 +48,21 @@ const toArray = (value) => {
 
 export default function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'PUT, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') {
     return res.status(204).end();
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).end();
+  if (req.method !== 'PUT') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  const { id } = req.query;
+
+  if (!id) {
+    return res.status(400).json({ error: 'Post ID is required' });
   }
 
   const form = formidable({ multiples: true, keepExtensions: true });
@@ -68,6 +74,15 @@ export default function handler(req, res) {
     }
 
     try {
+      const posts = readPosts();
+      const postIndex = posts.findIndex(post => String(post.id) === String(id));
+
+      if (postIndex === -1) {
+        return res.status(404).json({ error: 'Post not found' });
+      }
+
+      const existingPost = posts[postIndex];
+
       const coverFile = Array.isArray(files.coverImage) ? files.coverImage[0] : files.coverImage;
       const galleryFiles = Array.isArray(files.galleryImages)
         ? files.galleryImages
@@ -75,8 +90,7 @@ export default function handler(req, res) {
         ? [files.galleryImages]
         : [];
 
-      const existingId = getFieldValue(fields.existingId);
-      const existingCoverImageUrl = getFieldValue(fields.coverImageUrl) || '';
+      const existingCoverImageUrl = getFieldValue(fields.coverImageUrl) || existingPost.coverImage || '';
       const existingGalleryUrls = toArray(
         fields['galleryImageUrls[]'] ?? fields.galleryImageUrls ?? fields.existingGalleryImages
       ).map((item) => String(item));
@@ -84,78 +98,46 @@ export default function handler(req, res) {
       let coverImageUrl = '';
       let galleryImageUrls = [];
 
-      const postId = existingId || Date.now().toString();
-
       if (coverFile?.filepath) {
-        [coverImageUrl] = await uploadFilesToUploadThing([coverFile.filepath], 'imageUploader', postId);
+        [coverImageUrl] = await uploadFilesToUploadThing([coverFile.filepath], 'imageUploader', String(id));
       }
 
       if (galleryFiles.length > 0) {
         const paths = galleryFiles.map((file) => file.filepath).filter(Boolean);
         if (paths.length > 0) {
-          galleryImageUrls = await uploadFilesToUploadThing(paths, 'imageUploader', postId);
+          galleryImageUrls = await uploadFilesToUploadThing(paths, 'imageUploader', String(id));
         }
       }
 
       const finalCoverImage = coverImageUrl || existingCoverImageUrl || '';
       const finalGalleryImages = galleryImageUrls.length > 0 ? galleryImageUrls : existingGalleryUrls;
-      const categoryValue = getFieldValue(fields.category) || 'News';
+      const categoryValue = getFieldValue(fields.category) || existingPost.category || 'News';
       const normalizedType = categoryValue === 'Announcement' ? 'Announcement' : 'News';
 
-      const newPost = {
-        title: getFieldValue(fields.title),
-        slug: getFieldValue(fields.slug),
+      const updatedPost = {
+        ...existingPost,
+        title: getFieldValue(fields.title) || existingPost.title,
+        slug: getFieldValue(fields.slug) || existingPost.slug,
         category: categoryValue,
         type: normalizedType,
-        htmlContent: getFieldValue(fields.htmlContent),
-        language: getFieldValue(fields.language) || 'AZ',
+        htmlContent: getFieldValue(fields.htmlContent) || existingPost.htmlContent,
+        language: getFieldValue(fields.language) || existingPost.language || 'AZ',
         coverImage: finalCoverImage,
         galleryImages: finalGalleryImages,
-        author: 'admin',
-        status: 'Active',
-        publishStatus: 'Publish',
+        status: getFieldValue(fields.status) || existingPost.status || 'Active',
+        publishStatus: getFieldValue(fields.publishStatus) || existingPost.publishStatus || 'Publish',
+        updatedAt: new Date().toISOString(),
       };
 
-      const posts = readPosts();
-      let responsePost;
+      posts[postIndex] = updatedPost;
+      writePosts(posts);
 
-      if (existingId) {
-        const index = posts.findIndex((post) => String(post.id) === String(existingId));
-        if (index !== -1) {
-          const previous = posts[index];
-          responsePost = {
-            ...previous,
-            ...newPost,
-            id: String(existingId),
-            createdAt: previous.createdAt || new Date().toISOString(),
-          };
-          posts[index] = responsePost;
-        } else {
-          responsePost = {
-            ...newPost,
-            id: String(existingId),
-            createdAt: new Date().toISOString(),
-          };
-          posts.unshift(responsePost);
-        }
-        writePosts(posts);
-        return res.status(200).json(responsePost);
-      } else {
-        responsePost = {
-          ...newPost,
-          id: Date.now().toString(),
-          createdAt: new Date().toISOString(),
-        };
-        posts.unshift(responsePost);
-        writePosts(posts);
-        return res.status(201).json(responsePost);
-      }
+      console.log('Post updated successfully:', { id, title: updatedPost.title });
+      return res.status(200).json(updatedPost);
 
     } catch (error) {
-      console.error('create-post error', error);
+      console.error('update-post error', error);
       return res.status(500).json({ error: error.message || 'Unexpected error' });
     }
   });
 }
-
-
