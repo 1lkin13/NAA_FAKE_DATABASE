@@ -1,75 +1,69 @@
-const formidable = require('formidable');
-const fs = require('fs');
-const path = require('path');
-const { uploadFilesToUploadThing } = require('../lib/uploadthing-server');
+import formidable from 'formidable';
+import fs from 'fs';
+import path from 'path';
+import { uploadFilesToUploadThing } from '../lib/uploadthing-server.js';
 
-const SEED_FILE = path.join(process.cwd(), 'mock.data.production.json');
-const TMP_FILE = path.join('/tmp', 'mock_data_production.json');
+const filePath = path.join(process.cwd(), 'mock_data_production.json');
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'POST') return res.status(405).end();
+export const config = { api: { bodyParser: false } };
+
+export default function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).end();
+  }
 
   const form = formidable({ multiples: true, keepExtensions: true });
+
   form.parse(req, async (err, fields, files) => {
     if (err) {
-      return res.status(500).json({ error: 'File parse error' });
+      return res.status(500).json({ error: 'Parse error' });
     }
+
     try {
-      const cover = Array.isArray(files.coverImage) ? files.coverImage[0] : files.coverImage;
-      const gallery =
-        Array.isArray(files.galleryImages) ? files.galleryImages : files.galleryImages ? [files.galleryImages] : [];
+      const coverFile = Array.isArray(files.coverImage) ? files.coverImage[0] : files.coverImage;
+      const galleryFiles = Array.isArray(files.galleryImages)
+        ? files.galleryImages
+        : files.galleryImages
+        ? [files.galleryImages]
+        : [];
 
-      let coverUrl = '';
-      let galleryUrls = [];
+      let coverImageUrl = '';
+      let galleryImageUrls = [];
 
-      if (cover?.filepath) {
-        const [u] = await uploadFilesToUploadThing([cover.filepath], 'imageUploader');
-        coverUrl = u || '';
+      if (coverFile?.filepath) {
+        [coverImageUrl] = await uploadFilesToUploadThing([coverFile.filepath], 'imageUploader');
       }
-      if (gallery && gallery.length > 0) {
-        const paths = gallery.map((f) => f.filepath).filter(Boolean);
-        if (paths.length) {
-          galleryUrls = await uploadFilesToUploadThing(paths, 'imageUploader');
-        }
+
+      if (galleryFiles.length > 0) {
+        const paths = galleryFiles.map((f) => f.filepath).filter(Boolean);
+        galleryImageUrls = await uploadFilesToUploadThing(paths, 'imageUploader');
       }
 
       const newPost = {
         id: Date.now().toString(),
-        title: Array.isArray(fields.title) ? fields.title[0] : fields.title,
-        slug: Array.isArray(fields.slug) ? fields.slug[0] : fields.slug,
-        category: Array.isArray(fields.category) ? fields.category[0] : fields.category,
-        htmlContent: Array.isArray(fields.htmlContent) ? fields.htmlContent[0] : fields.htmlContent,
-        language: Array.isArray(fields.language) ? fields.language[0] : fields.language,
-        coverImage: coverUrl,
-        galleryImages: galleryUrls,
+        title: fields.title?.[0] || fields.title,
+        slug: fields.slug?.[0] || fields.slug,
+        category: fields.category?.[0] || fields.category,
+        htmlContent: fields.htmlContent?.[0] || fields.htmlContent,
+        language: fields.language?.[0] || fields.language,
+        coverImage: coverImageUrl || '',
+        galleryImages: galleryImageUrls,
         createdAt: new Date().toISOString(),
-        author: 'admin',
-        status: 'Active',
-        publishStatus: 'Publish',
       };
 
       let posts = [];
-      try {
-        if (fs.existsSync(TMP_FILE)) {
-          posts = JSON.parse(fs.readFileSync(TMP_FILE, 'utf-8'));
-        } else if (fs.existsSync(SEED_FILE)) {
-          posts = JSON.parse(fs.readFileSync(SEED_FILE, 'utf-8'));
-        }
-      } catch {}
+      if (fs.existsSync(filePath)) {
+        posts = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      }
+      posts.push(newPost);
+      fs.writeFileSync(filePath, JSON.stringify(posts, null, 2));
 
-      posts.unshift(newPost);
-      fs.writeFileSync(TMP_FILE, JSON.stringify(posts, null, 2));
-
-      return res.status(201).json(newPost);
-    } catch (e) {
-      console.error('Create post error:', e);
-      return res.status(500).json({ error: e.message || 'Upload failed' });
+      res.status(201).json(newPost);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: error.message });
     }
   });
-};
+}
 
 

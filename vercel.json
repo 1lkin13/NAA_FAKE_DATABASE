@@ -4,62 +4,11 @@
     {
       "src": "api/**/*.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/posts",
-      "destination": "/api/posts.js"
-    },
-    {
-      "source": "/api/create-post",
-      "destination": "/api/create-post.js"
-    },
-    {
-      "source": "/api/ut-upload",
-      "destination": "/api/ut-upload.js"
-    },
-    {
-      "source": "/api/posts/:id",
-      "destination": "/api/posts.js"
-    },
-    {
-      "source": "/files/(.*)",
-      "destination": "/public/files/$1"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
-        },
-        {
-          "key": "Access-Control-Max-Age",
-          "value": "86400"
-        },
-        {
-          "key": "Access-Control-Expose-Headers",
-          "value": "Content-Length, Content-Type"
-        }
-      ]
-    }
+  "routes": [
+    { "src": "/api/posts", "dest": "/api/posts.js" },
+    { "src": "/api/create-post", "dest": "/api/create-post.js" },
+    { "src": "/api/ut-upload", "dest": "/api/ut-upload.js" }
   ]
 }

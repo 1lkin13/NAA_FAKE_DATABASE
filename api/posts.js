@@ -1,28 +1,20 @@
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
 
-const SEED_FILE = path.join(process.cwd(), 'mock.data.production.json');
-const TMP_FILE = path.join('/tmp', 'mock_data_production.json');
+const filePath = path.join(process.cwd(), 'mock_data_production.json');
 
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(204).end();
-  if (req.method !== 'GET') return res.status(405).end();
+export default function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
 
   try {
-    let source = TMP_FILE;
-    if (!fs.existsSync(TMP_FILE)) {
-      source = SEED_FILE;
-    }
-    const data = fs.readFileSync(source, 'utf-8');
-    const posts = JSON.parse(data);
-    res.status(200).json(posts);
-  } catch (e) {
+    const data = fs.readFileSync(filePath, 'utf-8');
+    res.status(200).json(JSON.parse(data));
+  } catch {
     res.status(200).json([]);
   }
-};
+}
 
 // Vercel Serverless Function - GET, POST, PUT, DELETE posts
 import { readFileSync, writeFileSync, mkdirSync } from 'fs';
